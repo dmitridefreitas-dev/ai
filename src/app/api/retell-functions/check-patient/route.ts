@@ -2,6 +2,7 @@ import { getClinicFromCall, RetellFunctionRequest, retellResponse } from "@/lib/
 import { createServiceClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
+  try {
   const body: RetellFunctionRequest = await request.json();
   const { call: callObj, args } = body;
 
@@ -80,4 +81,8 @@ export async function POST(request: Request) {
         ? `I found ${patient.first_name} ${patient.last_name}. They have ${upcomingAppointments.length} upcoming appointment(s). The next one is on ${upcomingAppointments[0].date} at ${upcomingAppointments[0].time}.`
         : `I found ${patient.first_name} ${patient.last_name}, but they don't have any upcoming appointments.`,
   });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return retellResponse({ error: "check-patient crashed", message });
+  }
 }

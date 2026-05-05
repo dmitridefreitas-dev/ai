@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/resend";
 import { ClinicSettings } from "@/lib/types/database";
 
 export async function POST(request: Request) {
+  try {
   const body: RetellFunctionRequest = await request.json();
   const { call: callObj, args } = body;
 
@@ -163,6 +164,10 @@ export async function POST(request: Request) {
     success: true,
     message: `Appointment booked for ${formattedDate} at ${formattedTime}. A confirmation has been sent to the patient.`,
   });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return retellResponse({ error: "book-appointment crashed", message });
+  }
 }
 
 function convertTo24h(time12h: string): string {
