@@ -2,18 +2,10 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { Clinic } from "@/lib/types/database";
 
 export async function getClinicFromCall(
-  callId: string
+  call: RetellCallObject
 ): Promise<Clinic | null> {
-  const response = await fetch(`https://api.retellai.com/v2/get-call/${callId}`, {
-    headers: {
-      Authorization: `Bearer ${process.env.RETELL_API_KEY!}`,
-    },
-  });
-
-  if (!response.ok) return null;
-
-  const call = await response.json();
   const agentId = call.agent_id;
+  if (!agentId) return null;
 
   const supabase = createServiceClient();
   const { data: clinic } = await supabase
@@ -38,8 +30,15 @@ export async function getClinicByTwilioNumber(
   return clinic;
 }
 
-export type RetellFunctionRequest = {
+export type RetellCallObject = {
+  agent_id: string;
   call_id: string;
+  [key: string]: unknown;
+};
+
+export type RetellFunctionRequest = {
+  name: string;
+  call: RetellCallObject;
   args: Record<string, unknown>;
 };
 

@@ -3,9 +3,9 @@ import { sendSms } from "@/lib/twilio";
 
 export async function POST(request: Request) {
   const body: RetellFunctionRequest = await request.json();
-  const { call_id, args } = body;
+  const { call: callObj, args } = body;
 
-  const clinic = await getClinicFromCall(call_id);
+  const clinic = await getClinicFromCall(callObj);
   if (!clinic) {
     return retellResponse({ error: "Clinic not found" });
   }
