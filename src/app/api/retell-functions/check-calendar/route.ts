@@ -1,46 +1,16 @@
-import { getClinicFromCall, RetellFunctionRequest, retellResponse } from "@/lib/retell";
-import { getAvailableSlots } from "@/lib/google-calendar";
-import { ClinicSettings } from "@/lib/types/database";
+import { retellResponse } from "@/lib/retell";
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  console.log("CHECK-CALENDAR RAW BODY:", JSON.stringify(body));
+  try {
+    const body = await request.json();
 
-  const { call: callObj, args } = body as RetellFunctionRequest;
-
-  const clinic = await getClinicFromCall(callObj);
-  if (!clinic) {
     return retellResponse({
-      error: "Clinic not found",
-      debug_keys: Object.keys(body),
-      debug_call: callObj ? Object.keys(callObj) : "no call object",
-      debug_agent_id: callObj?.agent_id ?? "missing",
+      debug: true,
+      body_keys: Object.keys(body),
+      body_snapshot: JSON.stringify(body).slice(0, 500),
     });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return retellResponse({ error: "crash", message });
   }
-
-  const date = args.date as string;
-  const appointmentType = args.appointment_type as string | undefined;
-
-  const settings = clinic.settings as unknown as ClinicSettings;
-  const typeConfig = settings.appointment_types.find(
-    (t) => t.name.toLowerCase() === (appointmentType || "").toLowerCase()
-  );
-  const duration = typeConfig?.duration_minutes ?? 30;
-
-  const slots = await getAvailableSlots(clinic, date, duration);
-
-  if (slots.length === 0) {
-    return retellResponse({
-      available: false,
-      message: `No available slots on ${date}. Would you like to check another day?`,
-    });
-  }
-
-  const topSlots = slots.slice(0, 5);
-
-  return retellResponse({
-    available: true,
-    slots: topSlots.map((s) => s.start),
-    message: `Available times on ${date}: ${topSlots.map((s) => s.start).join(", ")}`,
-  });
 }
