@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return retellResponse({ error: "Clinic not found" });
     }
 
-    const target = (args.transfer_target as string).toLowerCase();
+    const target = ((args.transfer_target as string) || "default").toLowerCase();
     const settings = clinic.settings as unknown as ClinicSettings;
     const transferNumbers = settings.transfer_numbers;
 
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       message: `Transferring you now to ${target}. Please hold.`,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return retellResponse({ error: "transfer-call crashed", message });
+    const msg = err instanceof Error ? err.message : String(err);
+    return retellResponse({ error: "transfer-call failed", message: msg });
   }
 }

@@ -12,13 +12,27 @@ export async function POST(request: Request) {
       return retellResponse({ error: "Clinic not found" });
     }
 
-    const date = args.date as string;
+    let date = args.date as string | undefined;
+    if (!date) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      date = tomorrow.toISOString().split("T")[0];
+    }
+    if (date && !date.includes("-")) {
+      const parsed = new Date(date);
+      if (!isNaN(parsed.getTime())) {
+        date = parsed.toISOString().split("T")[0];
+      }
+    }
+
     const appointmentType = args.appointment_type as string | undefined;
 
     const settings = clinic.settings as unknown as ClinicSettings;
-    const typeConfig = settings.appointment_types.find(
-      (t) => t.name.toLowerCase() === (appointmentType || "").toLowerCase()
-    );
+    const typeConfig = appointmentType
+      ? settings.appointment_types.find(
+          (t) => t.name.toLowerCase() === appointmentType.toLowerCase()
+        )
+      : undefined;
     const duration = typeConfig?.duration_minutes ?? 30;
 
     const slots = await getAvailableSlots(clinic, date, duration);
@@ -34,11 +48,12 @@ export async function POST(request: Request) {
 
     return retellResponse({
       available: true,
+      date,
       slots: topSlots.map((s) => s.start),
       message: `Available times on ${date}: ${topSlots.map((s) => s.start).join(", ")}`,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return retellResponse({ error: "check-calendar crashed", message });
+    const msg = err instanceof Error ? err.message : String(err);
+    return retellResponse({ error: "check-calendar failed", message: msg });
   }
 }

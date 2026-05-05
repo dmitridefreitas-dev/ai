@@ -11,8 +11,15 @@ export async function POST(request: Request) {
       return retellResponse({ error: "Clinic not found" });
     }
 
-    const recipientPhone = args.recipient_phone as string;
-    const message = args.message as string;
+    const recipientPhone = args.recipient_phone as string | undefined;
+    const message = args.message as string | undefined;
+
+    if (!recipientPhone || !message) {
+      return retellResponse({
+        error: "Missing information",
+        message: "I need the recipient's phone number and the message to send.",
+      });
+    }
 
     await sendSms({
       to: recipientPhone,
@@ -27,7 +34,7 @@ export async function POST(request: Request) {
       message: `SMS sent to ${recipientPhone}`,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return retellResponse({ error: "send-sms crashed", message });
+    const msg = err instanceof Error ? err.message : String(err);
+    return retellResponse({ error: "send-sms failed", message: msg });
   }
 }
