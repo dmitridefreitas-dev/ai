@@ -3,12 +3,19 @@ import { getAvailableSlots } from "@/lib/google-calendar";
 import { ClinicSettings } from "@/lib/types/database";
 
 export async function POST(request: Request) {
-  const body: RetellFunctionRequest = await request.json();
-  const { call: callObj, args } = body;
+  const body = await request.json();
+  console.log("CHECK-CALENDAR RAW BODY:", JSON.stringify(body));
+
+  const { call: callObj, args } = body as RetellFunctionRequest;
 
   const clinic = await getClinicFromCall(callObj);
   if (!clinic) {
-    return retellResponse({ error: "Clinic not found" });
+    return retellResponse({
+      error: "Clinic not found",
+      debug_keys: Object.keys(body),
+      debug_call: callObj ? Object.keys(callObj) : "no call object",
+      debug_agent_id: callObj?.agent_id ?? "missing",
+    });
   }
 
   const date = args.date as string;
