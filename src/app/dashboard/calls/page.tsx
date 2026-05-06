@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 type CallRow = {
   id: string;
@@ -28,30 +27,12 @@ export default function CallLogPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const { data: staff } = await supabase.auth.getUser();
-      if (!staff.user) return;
-
-      const { data: staffRow } = await supabase
-        .from("staff")
-        .select("clinic_id")
-        .eq("auth_user_id", staff.user.id)
-        .single();
-
-      if (!staffRow) return;
-
-      const { data } = await supabase
-        .from("call_logs")
-        .select("*")
-        .eq("clinic_id", staffRow.clinic_id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      setCalls(data || []);
-      setLoading(false);
-    }
-    load();
+    fetch("/api/dashboard/data?table=call_logs")
+      .then((r) => r.json())
+      .then((res) => {
+        setCalls(res.data || []);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {

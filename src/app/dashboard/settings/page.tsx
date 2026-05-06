@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 type ClinicSettings = {
   reminder_hours_before: number;
@@ -27,34 +26,15 @@ export default function SettingsPage() {
   const [googleConnected, setGoogleConnected] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser.user) return;
-
-      const { data: staffRow } = await supabase
-        .from("staff")
-        .select("clinic_id")
-        .eq("auth_user_id", authUser.user.id)
-        .single();
-
-      if (!staffRow) return;
-      setClinicId(staffRow.clinic_id);
-
-      const { data: clinic } = await supabase
-        .from("clinics")
-        .select("business_hours, settings, google_oauth_tokens")
-        .eq("id", staffRow.clinic_id)
-        .single();
-
-      if (clinic) {
-        setBusinessHours(clinic.business_hours as unknown as BusinessHours);
-        setSettings(clinic.settings as unknown as ClinicSettings);
-        setGoogleConnected(!!clinic.google_oauth_tokens);
-      }
-      setLoading(false);
-    }
-    load();
+    fetch("/api/dashboard/data?table=settings")
+      .then((r) => r.json())
+      .then((res) => {
+        setClinicId(res.clinicId || null);
+        setBusinessHours(res.businessHours || {});
+        setSettings(res.settings || null);
+        setGoogleConnected(res.googleConnected || false);
+        setLoading(false);
+      });
   }, []);
 
   async function handleSave() {
@@ -62,14 +42,11 @@ export default function SettingsPage() {
     setSaving(true);
     setSaved(false);
 
-    const supabase = createClient();
-    await supabase
-      .from("clinics")
-      .update({
-        business_hours: JSON.parse(JSON.stringify(businessHours)),
-        settings: JSON.parse(JSON.stringify(settings)),
-      })
-      .eq("id", clinicId);
+    await fetch("/api/dashboard/save-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ businessHours, settings }),
+    });
 
     setSaving(false);
     setSaved(true);
@@ -137,7 +114,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Business Hours */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h2 className="font-semibold text-lg mb-4">Business Hours</h2>
           <div className="space-y-3">
@@ -176,7 +152,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Appointment Types */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-lg">Appointment Types</h2>
@@ -217,7 +192,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Automation Settings */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h2 className="font-semibold text-lg mb-4">Automation</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,7 +224,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Transfer Numbers */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h2 className="font-semibold text-lg mb-4">Transfer Numbers</h2>
           <div className="space-y-3">
@@ -273,7 +246,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Google Calendar */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <h2 className="font-semibold text-lg mb-4">Google Calendar</h2>
           {googleConnected ? (

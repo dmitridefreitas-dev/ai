@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 type PatientRow = {
@@ -26,30 +25,12 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser.user) return;
-
-      const { data: staffRow } = await supabase
-        .from("staff")
-        .select("clinic_id")
-        .eq("auth_user_id", authUser.user.id)
-        .single();
-
-      if (!staffRow) return;
-
-      const { data } = await supabase
-        .from("patients")
-        .select("id, first_name, last_name, phone, email, intake_status, created_at")
-        .eq("clinic_id", staffRow.clinic_id)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      setPatients(data || []);
-      setLoading(false);
-    }
-    load();
+    fetch("/api/dashboard/data?table=patients")
+      .then((r) => r.json())
+      .then((res) => {
+        setPatients(res.data || []);
+        setLoading(false);
+      });
   }, []);
 
   const filtered = patients.filter((p) => {

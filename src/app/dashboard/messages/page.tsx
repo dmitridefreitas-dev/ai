@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 type SmsRow = {
   id: string;
@@ -24,39 +23,14 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser.user) return;
-
-      const { data: staffRow } = await supabase
-        .from("staff")
-        .select("clinic_id")
-        .eq("auth_user_id", authUser.user.id)
-        .single();
-
-      if (!staffRow) return;
-      setClinicId(staffRow.clinic_id);
-
-      const { data: clinic } = await supabase
-        .from("clinics")
-        .select("twilio_number")
-        .eq("id", staffRow.clinic_id)
-        .single();
-
-      if (clinic) setTwilioNumber(clinic.twilio_number);
-
-      const { data } = await supabase
-        .from("sms_messages")
-        .select("*")
-        .eq("clinic_id", staffRow.clinic_id)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      setMessages(data || []);
-      setLoading(false);
-    }
-    load();
+    fetch("/api/dashboard/data?table=sms_messages")
+      .then((r) => r.json())
+      .then((res) => {
+        setMessages(res.data || []);
+        setClinicId(res.clinicId || null);
+        setTwilioNumber(res.twilioNumber || "");
+        setLoading(false);
+      });
   }, []);
 
   async function handleSend(e: React.FormEvent) {
@@ -81,14 +55,9 @@ export default function MessagesPage() {
       setSendBody("");
       setShowSend(false);
 
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("sms_messages")
-        .select("*")
-        .eq("clinic_id", clinicId)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      setMessages(data || []);
+      const refreshRes = await fetch("/api/dashboard/data?table=sms_messages");
+      const refreshData = await refreshRes.json();
+      setMessages(refreshData.data || []);
     }
 
     setSending(false);

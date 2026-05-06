@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 type PatientDetail = {
@@ -25,6 +24,15 @@ type AppointmentRow = {
   duration_minutes: number;
 };
 
+const statusColors: Record<string, string> = {
+  scheduled: "bg-yellow-100 text-yellow-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  checked_in: "bg-green-100 text-green-800",
+  completed: "bg-gray-100 text-gray-600",
+  no_show: "bg-red-100 text-red-800",
+  cancelled: "bg-gray-100 text-gray-400",
+};
+
 export default function PatientDetailPage({
   params,
 }: {
@@ -35,34 +43,16 @@ export default function PatientDetailPage({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    params.then(({ id }) => loadPatient(id));
+    params.then(({ id }) => {
+      fetch(`/api/dashboard/data?table=patient_detail&id=${id}`)
+        .then((r) => r.json())
+        .then((res) => {
+          setPatient(res.patient || null);
+          setAppointments(res.appointments || []);
+          setLoading(false);
+        });
+    });
   }, [params]);
-
-  async function loadPatient(id: string) {
-    const supabase = createClient();
-
-    const { data: p } = await supabase
-      .from("patients")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (!p) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: appts } = await supabase
-      .from("appointments")
-      .select("id, datetime_start, type, status, duration_minutes")
-      .eq("patient_id", id)
-      .order("datetime_start", { ascending: false })
-      .limit(20);
-
-    setPatient(p);
-    setAppointments(appts || []);
-    setLoading(false);
-  }
 
   if (loading) {
     return <div className="p-8 text-center text-gray-400">Loading patient...</div>;
@@ -79,15 +69,6 @@ export default function PatientDetailPage({
   const past = appointments.filter(
     (a) => new Date(a.datetime_start) < new Date() || a.status === "cancelled"
   );
-
-  const statusColors: Record<string, string> = {
-    scheduled: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    checked_in: "bg-green-100 text-green-800",
-    completed: "bg-gray-100 text-gray-600",
-    no_show: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-400",
-  };
 
   return (
     <div>
