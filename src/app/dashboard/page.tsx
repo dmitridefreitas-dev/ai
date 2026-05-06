@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { TodayAppointments } from "./today-appointments";
 
@@ -7,7 +7,8 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: staff } = await supabase
+  const serviceClient = createServiceClient();
+  const { data: staff } = await serviceClient
     .from("staff")
     .select("clinic_id")
     .eq("auth_user_id", user.id)
@@ -21,19 +22,19 @@ export default async function DashboardPage() {
   const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
   const [appointmentsRes, callsRes, noShowsRes] = await Promise.all([
-    supabase
+    serviceClient
       .from("appointments")
       .select("id, datetime_start, datetime_end, type, status, duration_minutes, source, patient_id")
       .eq("clinic_id", clinicId)
       .gte("datetime_start", todayStart)
       .lt("datetime_start", todayEnd)
       .order("datetime_start", { ascending: true }),
-    supabase
+    serviceClient
       .from("call_logs")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId)
       .gte("created_at", todayStart),
-    supabase
+    serviceClient
       .from("appointments")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId)
@@ -48,7 +49,7 @@ export default async function DashboardPage() {
 
   const patientIds = [...new Set(rawAppointments.map((a) => a.patient_id))];
   const { data: patients } = patientIds.length > 0
-    ? await supabase
+    ? await serviceClient
         .from("patients")
         .select("id, first_name, last_name, phone")
         .in("id", patientIds)
